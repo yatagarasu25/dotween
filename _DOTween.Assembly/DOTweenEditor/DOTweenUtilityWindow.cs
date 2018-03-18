@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace DG.DOTweenEditor
 {
-    public class UtilityWindowModificationProcessor : AssetModificationProcessor
+    public class UtilityWindowModificationProcessor : UnityEditor.AssetModificationProcessor
     {
         // Checks if deleted folder contains DOTween Pro and in case removes scripting define symbols
         static AssetDeleteResult OnWillDeleteAsset(string asset, RemoveAssetOptions options)
@@ -74,7 +74,7 @@ namespace DG.DOTweenEditor
     {
         [MenuItem("Tools/Demigiant/" + _Title)]
         static void ShowWindow() { Open(); }
-		
+
         const string _Title = "DOTween Utility Panel";
         static readonly Vector2 _WinSize = new Vector2(370,490);
         public const string Id = "DOTweenVersion";
