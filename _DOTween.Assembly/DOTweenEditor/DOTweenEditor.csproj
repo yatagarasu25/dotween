@@ -11,7 +11,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DG.DOTweenEditor</RootNamespace>
     <AssemblyName>DOTweenEditor</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -24,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>$(SolutionDir)bin\Release.UnityEx\Assemblies\Editor\DOTweenEditor.XML</DocumentationFile>
     <NoWarn>1591</NoWarn>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -34,6 +34,7 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>$(SolutionDir)bin\Release.UnityEx\Assemblies\Editor\DOTweenEditor.XML</DocumentationFile>
     <NoWarn>1591</NoWarn>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

@@ -129,11 +129,11 @@ namespace DG.DOTweenEditor.Core
                 if (createIfMissing) CreateScriptableAsset<T>(adbFilePath);
                 else return null;
             }
-            T source = (T)Resources.LoadAssetAtPath(adbFilePath, typeof(T));
+            T source = AssetDatabase.LoadAssetAtPath<T>(adbFilePath);
             if (source == null) {
                 // Source changed (or editor file was moved from outside of Unity): overwrite it
                 CreateScriptableAsset<T>(adbFilePath);
-                source = (T)Resources.LoadAssetAtPath(adbFilePath, typeof(T));
+                source = AssetDatabase.LoadAssetAtPath<T>(adbFilePath);
             }
             return source;
         }
