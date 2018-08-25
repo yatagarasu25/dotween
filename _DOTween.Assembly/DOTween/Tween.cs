@@ -23,8 +23,14 @@ namespace DG.Tweening
         public float timeScale;
         /// <summary>If TRUE the tween wil go backwards</summary>
         public bool isBackwards;
-        /// <summary>Id (usable for filtering with DOTween static methods). Can be an int, a string, an object, or anything else</summary>
+        /// <summary>Object ID (usable for filtering with DOTween static methods). Can be anything except a string or an int
+        /// (use <see cref="stringId"/> or <see cref="intId"/> for those)</summary>
         public object id;
+        /// <summary>String ID (usable for filtering with DOTween static methods). 2X faster than using an object id</summary>
+        public string stringId;
+        /// <summary>Int ID (usable for filtering with DOTween static methods). 4X faster than using an object id, 2X faster than using a string id.
+        /// Default is -999 so avoid using an ID like that or it will capture all unset intIds</summary>
+        public int intId = -999;
         /// <summary>Tween target (usable for filtering with DOTween static methods). Automatically set by tween creation shorcuts</summary>
         public object target; // Automatically set by DO shortcuts using SetTarget extension. Also used during Tweener.DoStartup in some special cases
         // Update type and eventual independence (changed via TweenManager.SetUpdateType)
@@ -33,27 +39,28 @@ namespace DG.Tweening
 //        public TweenCallback onStart; // (in ABSSequentiable) When the tween is set in a PLAY state the first time, AFTER any eventual delay
         /// <summary>Called when the tween is set in a playing state, after any eventual delay.
         /// Also called each time the tween resumes playing from a paused state</summary>
-        internal TweenCallback onPlay;
+        public TweenCallback onPlay;
         /// <summary>Called when the tween state changes from playing to paused.
         /// If the tween has autoKill set to FALSE, this is called also when the tween reaches completion.</summary>
-        internal TweenCallback onPause;
+        public TweenCallback onPause;
         /// <summary>Called when the tween is rewinded,
         /// either by calling <code>Rewind</code> or by reaching the start position while playing backwards.
         /// Rewinding a tween that is already rewinded will not fire this callback</summary>
-        internal TweenCallback onRewind;
+        public TweenCallback onRewind;
         /// <summary>Called each time the tween updates</summary>
-        internal TweenCallback onUpdate;
+        public TweenCallback onUpdate;
         /// <summary>Called the moment the tween completes one loop cycle</summary>
-        internal TweenCallback onStepComplete;
+        public TweenCallback onStepComplete;
         /// <summary>Called the moment the tween reaches completion (loops included)</summary>
-        internal TweenCallback onComplete;
+        public TweenCallback onComplete;
         /// <summary>Called the moment the tween is killed</summary>
-        internal TweenCallback onKill;
+        public TweenCallback onKill;
         /// <summary>Called when a path tween's current waypoint changes</summary>
-        internal TweenCallback<int> onWaypointChange;
+        public TweenCallback<int> onWaypointChange;
         
         // Fixed after creation
         internal bool isFrom; // Used to prevent settings like isRelative from being applied on From tweens
+        internal bool isBlendable; // Set by blendable tweens, prevents isRelative to be applied
         internal bool isRecyclable;
         internal bool isSpeedBased;
         internal bool autoKill;
@@ -62,7 +69,8 @@ namespace DG.Tweening
         internal LoopType loopType;
         // Tweeners-only (shared by Sequences only for compatibility reasons, otherwise not used)
         internal float delay;
-        internal bool isRelative;
+        /// <summary>Tweeners-only (ignored by Sequences), returns TRUE if the tween was set as relative</summary>
+        public bool isRelative { get; internal set; } // Required by Modules
         internal Ease easeType;
         internal EaseFunction customEase; // Used both for AnimationCurve and custom eases
 #pragma warning disable 1591
@@ -75,7 +83,8 @@ namespace DG.Tweening
         internal Type typeofT1; // Only used by Tweeners
         internal Type typeofT2; // Only used by Tweeners
         internal Type typeofTPlugOptions; // Only used by Tweeners
-        internal bool active; // FALSE when tween is (or should be) despawned - set only by TweenManager
+        /// <summary>FALSE when tween is (or should be) despawned - set only by TweenManager</summary>
+        public bool active { get; internal set; } // Required by Modules
         internal bool isSequenced; // Set by Sequence when adding a Tween to it
         internal Sequence sequenceParent;  // Set by Sequence when adding a Tween to it
         internal int activeId = -1; // Index inside its active list (touched only by TweenManager)
@@ -88,8 +97,10 @@ namespace DG.Tweening
 
         internal bool creationLocked; // TRUE after the tween was updated the first time (even if it was delayed), or when added to a Sequence
         internal bool startupDone; // TRUE the first time the actual tween starts, AFTER any delay has elapsed (unless it's a FROM tween)
-        internal bool playedOnce; // TRUE after the tween was set in a play state at least once, AFTER any delay is elapsed
-        internal float position; // Time position within a single loop cycle
+        /// <summary>TRUE after the tween was set in a play state at least once, AFTER any delay is elapsed</summary>
+        public bool playedOnce { get; private set; } // Required by Modules
+        /// <summary>Time position within a single loop cycle</summary>
+        public float position { get; internal set; } // Required by Modules
         internal float fullDuration; // Total duration loops included
         internal int completedLoops;
         internal bool isPlaying; // Set by TweenManager when getting a new tween
@@ -108,12 +119,15 @@ namespace DG.Tweening
             timeScale = 1;
             isBackwards = false;
             id = null;
+            stringId = null;
+            intId = -999;
             isIndependentUpdate = false;
             onStart = onPlay = onRewind = onUpdate = onComplete = onStepComplete = onKill = null;
             onWaypointChange = null;
 
             target = null;
             isFrom = false;
+            isBlendable = false;
             isSpeedBased = false;
             duration = 0;
             loops = 1;
@@ -161,8 +175,9 @@ namespace DG.Tweening
         internal abstract bool Startup();
 
         // Applies the tween set by DoGoto.
-        // Returns TRUE if the tween needs to be killed
-        internal abstract bool ApplyTween(float prevPosition, int prevCompletedLoops, int newCompletedSteps, bool useInversePosition, UpdateMode updateMode);
+        // Returns TRUE if the tween needs to be killed.
+        // UpdateNotice is only used by Tweeners, since Sequences re-evaluate for it
+        internal abstract bool ApplyTween(float prevPosition, int prevCompletedLoops, int newCompletedSteps, bool useInversePosition, UpdateMode updateMode, UpdateNotice updateNotice);
 
         #endregion
 
@@ -229,10 +244,15 @@ namespace DG.Tweening
                 && (t.position < t.duration ? t.completedLoops % 2 != 0 : t.completedLoops % 2 == 0);
 
             // Get values from plugin and set them
-            if (t.ApplyTween(prevPosition, prevCompletedLoops, newCompletedSteps, useInversePosition, updateMode)) return true;
+            bool isRewindStep = !wasRewinded && (
+                                    t.loopType == LoopType.Restart && t.completedLoops != prevCompletedLoops && (t.loops == -1 || t.completedLoops < t.loops)
+                                    || t.position <= 0 && t.completedLoops <= 0
+                                );
+            UpdateNotice updateNotice = isRewindStep ? UpdateNotice.RewindStep : UpdateNotice.None;
+            if (t.ApplyTween(prevPosition, prevCompletedLoops, newCompletedSteps, useInversePosition, updateMode, updateNotice)) return true;
 
             // Additional callbacks
-            if (t.onUpdate != null) {
+            if (t.onUpdate != null && updateMode != UpdateMode.IgnoreOnUpdate) {
                 OnTweenCallback(t.onUpdate);
             }
             if (t.position <= 0 && t.completedLoops <= 0 && !wasRewinded && t.onRewind != null) {
@@ -241,7 +261,7 @@ namespace DG.Tweening
             if (newCompletedSteps > 0 && updateMode == UpdateMode.Update && t.onStepComplete != null) {
                 for (int i = 0; i < newCompletedSteps; ++i) OnTweenCallback(t.onStepComplete);
             }
-            if (t.isComplete && !wasComplete && t.onComplete != null) {
+            if (t.isComplete && !wasComplete && updateMode != UpdateMode.IgnoreOnComplete && t.onComplete != null) {
                 OnTweenCallback(t.onComplete);
             }
             if (!t.isPlaying && wasPlaying && (!t.isComplete || !t.autoKill) && t.onPause != null) {
@@ -260,7 +280,9 @@ namespace DG.Tweening
                 try {
                     callback();
                 } catch (Exception e) {
-                    Debugger.LogWarning("An error inside a tween callback was silently taken care of > " + e.Message);
+                    Debugger.LogWarning(string.Format(
+                        "An error inside a tween callback was silently taken care of ({0}) ► {1}\n\n{2}\n\n", e.TargetSite, e.Message, e.StackTrace
+                    ));
                     return false; // Callback error
                 }
             } else callback();
@@ -272,7 +294,9 @@ namespace DG.Tweening
                 try {
                     callback(param);
                 } catch (Exception e) {
-                    Debugger.LogWarning("An error inside a tween callback was silently taken care of > " + e.Message);
+                    Debugger.LogWarning(string.Format(
+                        "An error inside a tween callback was silently taken care of ({0}) ► {1}", e.TargetSite, e.Message
+                    ));
                     return false; // Callback error
                 }
             } else callback(param);

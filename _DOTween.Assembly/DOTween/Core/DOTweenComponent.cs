@@ -4,7 +4,9 @@
 // License Copyright (c) Daniele Giardini.
 // This work is subject to the terms at http://dotween.demigiant.com/license.php
 
+using System;
 using System.Collections;
+using System.Reflection;
 using UnityEngine;
 
 #pragma warning disable 1591
@@ -23,14 +25,32 @@ namespace DG.Tweening.Core
         float _unscaledTime;
         float _unscaledDeltaTime;
 
+        float _pausedTime; // Marks the time when Unity was paused
+
         bool _duplicateToDestroy;
 
         #region Unity Methods
 
         void Awake()
         {
+            if (DOTween.instance == null) DOTween.instance = this;
+            else {
+                Debugger.LogWarning("Duplicate DOTweenComponent instance found in scene: destroying it");
+                Destroy(this.gameObject);
+                return;
+            }
+
             inspectorUpdater = 0;
             _unscaledTime = Time.realtimeSinceStartup;
+
+            // Initialize DOTweenModuleUtils via Reflection
+            Type modules = Utils.GetLooseScriptType("DG.Tweening.DOTweenModuleUtils");
+            if (modules == null) {
+                Debugger.LogError("Couldn't load Modules system");
+                return;
+            }
+            MethodInfo mi = modules.GetMethod("Init", BindingFlags.Static | BindingFlags.Public);
+            mi.Invoke(null, null);
         }
 
         void Start()
@@ -46,12 +66,13 @@ namespace DG.Tweening.Core
         void Update()
         {
             _unscaledDeltaTime = Time.realtimeSinceStartup - _unscaledTime;
+            if (DOTween.useSmoothDeltaTime && _unscaledDeltaTime > DOTween.maxSmoothUnscaledTime) _unscaledDeltaTime = DOTween.maxSmoothUnscaledTime;
             if (TweenManager.hasActiveDefaultTweens) {
-                TweenManager.Update(UpdateType.Normal, Time.deltaTime * DOTween.timeScale, _unscaledDeltaTime * DOTween.timeScale);
+                TweenManager.Update(UpdateType.Normal, (DOTween.useSmoothDeltaTime ? Time.smoothDeltaTime : Time.deltaTime) * DOTween.timeScale, _unscaledDeltaTime * DOTween.timeScale);
             }
             _unscaledTime = Time.realtimeSinceStartup;
 
-            if (DOTween.isUnityEditor) {
+            if (TweenManager.isUnityEditor) {
                 inspectorUpdater++;
                 if (DOTween.showUnityEditorReport && TweenManager.hasActiveTweens) {
                     if (TweenManager.totActiveTweeners > DOTween.maxActiveTweenersReached) DOTween.maxActiveTweenersReached = TweenManager.totActiveTweeners;
@@ -63,24 +84,35 @@ namespace DG.Tweening.Core
         void LateUpdate()
         {
             if (TweenManager.hasActiveLateTweens) {
-                TweenManager.Update(UpdateType.Late, Time.deltaTime * DOTween.timeScale, _unscaledDeltaTime * DOTween.timeScale);
+                TweenManager.Update(UpdateType.Late, (DOTween.useSmoothDeltaTime ? Time.smoothDeltaTime : Time.deltaTime) * DOTween.timeScale, _unscaledDeltaTime * DOTween.timeScale);
             }
         }
 
         void FixedUpdate()
         {
             if (TweenManager.hasActiveFixedTweens && Time.timeScale > 0) {
-                TweenManager.Update(UpdateType.Fixed, Time.deltaTime * DOTween.timeScale, (Time.deltaTime / Time.timeScale) * DOTween.timeScale);
+                TweenManager.Update(UpdateType.Fixed, (DOTween.useSmoothDeltaTime ? Time.smoothDeltaTime : Time.deltaTime) * DOTween.timeScale, ((DOTween.useSmoothDeltaTime ? Time.smoothDeltaTime : Time.deltaTime) / Time.timeScale) * DOTween.timeScale);
             }
         }
 
-        void OnLevelWasLoaded()
-        {
-            if (DOTween.useSafeMode) DOTween.Validate();
-        }
+        // Now activated directly by DOTween so it can be used to run tweens in editor mode
+//        internal void ManualUpdate(float deltaTime, float unscaledDeltaTime)
+//        {
+//            if (TweenManager.hasActiveManualTweens) {
+//                TweenManager.Update(UpdateType.Manual, deltaTime * DOTween.timeScale, unscaledDeltaTime * DOTween.timeScale);
+//            }
+//        }
+
+        // Removed to allow compatibility with Unity 5.4 and later
+//        void OnLevelWasLoaded()
+//        {
+//            if (DOTween.useSafeMode) DOTween.Validate();
+//        }
 
         void OnDrawGizmos()
         {
+            if (!DOTween.drawGizmos || !TweenManager.isUnityEditor) return;
+
             int len = DOTween.GizmosDelegates.Count;
             if (len == 0) return;
 
@@ -92,7 +124,7 @@ namespace DG.Tweening.Core
             if (_duplicateToDestroy) return;
 
             if (DOTween.showUnityEditorReport) {
-                string s = "REPORT > Max overall simultaneous active Tweeners/Sequences: " + DOTween.maxActiveTweenersReached + "/" + DOTween.maxActiveSequencesReached;
+                string s = "Max overall simultaneous active Tweeners/Sequences: " + DOTween.maxActiveTweenersReached + "/" + DOTween.maxActiveSequencesReached;
                 Debugger.LogReport(s);
             }
 //            DOTween.initialized = false;
@@ -100,10 +132,26 @@ namespace DG.Tweening.Core
             if (DOTween.instance == this) DOTween.instance = null;
         }
 
+        // Detract/reapply pause time from/to unscaled time
+        public void OnApplicationPause(bool pauseStatus)
+        {
+            if (pauseStatus) {
+                _pausedTime = Time.realtimeSinceStartup;
+            } else {
+                _unscaledTime += Time.realtimeSinceStartup - _pausedTime;
+            }
+        }
+
         void OnApplicationQuit()
         {
             DOTween.isQuitting = true;
         }
+
+        #endregion
+
+        #region Editor
+
+        
 
         #endregion
 

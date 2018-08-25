@@ -4,6 +4,16 @@
 // License Copyright (c) Daniele Giardini.
 // This work is subject to the terms at http://dotween.demigiant.com/license.php
 
+
+using System;
+using System.Collections;
+#if COMPATIBLE
+using DOVector3 = DG.Tweening.Core.Surrogates.Vector3Wrapper;
+using DOQuaternion = DG.Tweening.Core.Surrogates.QuaternionWrapper;
+#else
+using DOVector3 = UnityEngine.Vector3;
+using DOQuaternion = UnityEngine.Quaternion;
+#endif
 using DG.Tweening.Core;
 using DG.Tweening.Core.Enums;
 using DG.Tweening.Plugins.Core;
@@ -62,7 +72,7 @@ namespace DG.Tweening
         internal static bool Setup<T1, T2, TPlugOptions>(
             TweenerCore<T1, T2, TPlugOptions> t, DOGetter<T1> getter, DOSetter<T1> setter, T2 endValue, float duration, ABSTweenPlugin<T1, T2, TPlugOptions> plugin = null
         )
-            where TPlugOptions : struct
+            where TPlugOptions : struct, IPlugOptions
         {
             if (plugin != null) t.tweenPlugin = plugin;
             else {
@@ -92,7 +102,7 @@ namespace DG.Tweening
         // CALLED BY TweenerCore
         // Returns the elapsed time minus delay in case of success,
         // -1 if there are missing references and the tween needs to be killed
-        internal static float DoUpdateDelay<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t, float elapsed) where TPlugOptions : struct
+        internal static float DoUpdateDelay<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t, float elapsed) where TPlugOptions : struct, IPlugOptions
         {
             float tweenDelay = t.delay;
             if (elapsed > tweenDelay) {
@@ -109,7 +119,7 @@ namespace DG.Tweening
         // (unless it's a FROM tween, in which case it will be called BEFORE any eventual delay).
         // Returns TRUE in case of success,
         // FALSE if there are missing references and the tween needs to be killed
-        internal static bool DoStartup<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct
+        internal static bool DoStartup<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct, IPlugOptions
         {
             t.startupDone = true;
 
@@ -123,7 +133,10 @@ namespace DG.Tweening
                 if (DOTween.useSafeMode) {
                     try {
                         t.startValue = t.tweenPlugin.ConvertToStartValue(t, t.getter());
-                    } catch {
+                    } catch (Exception e) {
+                        Debugger.LogWarning(string.Format(
+                            "Tween startup failed (NULL target/property - {0}): the tween will now be killed ► {1}", e.TargetSite, e.Message
+                        ));
                         return false; // Target/field doesn't exist: kill tween
                     }
                 } else t.startValue = t.tweenPlugin.ConvertToStartValue(t, t.getter());
@@ -145,7 +158,7 @@ namespace DG.Tweening
         // CALLED BY TweenerCore
         internal static Tweener DoChangeStartValue<T1, T2, TPlugOptions>(
             TweenerCore<T1, T2, TPlugOptions> t, T2 newStartValue, float newDuration
-        ) where TPlugOptions : struct
+        ) where TPlugOptions : struct, IPlugOptions
         {
             t.hasManuallySetStartValue = true;
             t.startValue = newStartValue;
@@ -163,7 +176,7 @@ namespace DG.Tweening
             }
 
             // Force rewind
-            DoGoto(t, 0, 0, UpdateMode.Goto);
+            DoGoto(t, 0, 0, UpdateMode.IgnoreOnUpdate);
 
             return t;
         }
@@ -171,7 +184,7 @@ namespace DG.Tweening
         // CALLED BY TweenerCore
         internal static Tweener DoChangeEndValue<T1, T2, TPlugOptions>(
             TweenerCore<T1, T2, TPlugOptions> t, T2 newEndValue, float newDuration, bool snapStartValue
-        ) where TPlugOptions : struct
+        ) where TPlugOptions : struct, IPlugOptions
         {
             t.endValue = newEndValue;
             t.isRelative = false;
@@ -201,14 +214,14 @@ namespace DG.Tweening
             }
 
             // Force rewind
-            DoGoto(t, 0, 0, UpdateMode.Goto);
+            DoGoto(t, 0, 0, UpdateMode.IgnoreOnUpdate);
 
             return t;
         }
 
         internal static Tweener DoChangeValues<T1, T2, TPlugOptions>(
             TweenerCore<T1, T2, TPlugOptions> t, T2 newStartValue, T2 newEndValue, float newDuration
-        ) where TPlugOptions : struct
+        ) where TPlugOptions : struct, IPlugOptions
         {
             t.hasManuallySetStartValue = true;
             t.isRelative = t.isFrom = false;
@@ -228,7 +241,7 @@ namespace DG.Tweening
             }
 
             // Force rewind
-            DoGoto(t, 0, 0, UpdateMode.Goto);
+            DoGoto(t, 0, 0, UpdateMode.IgnoreOnUpdate);
 
             return t;
         }
@@ -236,12 +249,12 @@ namespace DG.Tweening
         // Commands shared by DOStartup/ChangeStart/End/Values if the tween has already started up
         // and thus some settings needs to be reapplied.
         // Returns TRUE in case of SUCCESS, FALSE if there were managed errors
-        static bool DOStartupSpecials<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct
+        static bool DOStartupSpecials<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct, IPlugOptions
         {
             try {
                 switch (t.specialStartupMode) {
                 case SpecialStartupMode.SetLookAt:
-                    if (!SpecialPluginsUtils.SetLookAt(t as TweenerCore<Quaternion, Vector3, QuaternionOptions>)) return false;
+                    if (!SpecialPluginsUtils.SetLookAt(t as TweenerCore<DOQuaternion, DOVector3, QuaternionOptions>)) return false;
                     break;
                 case SpecialStartupMode.SetPunch:
                     if (!SpecialPluginsUtils.SetPunch(t as TweenerCore<Vector3, Vector3[], Vector3ArrayOptions>)) return false;
@@ -255,11 +268,11 @@ namespace DG.Tweening
                 }
                 return true;
             } catch {
-                // Erro in SpecialPluginUtils (usually due to target being destroyed)
+                // Error in SpecialPluginUtils (usually due to target being destroyed)
                 return false;
             }
         }
-        static void DOStartupDurationBased<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct
+        static void DOStartupDurationBased<T1, T2, TPlugOptions>(TweenerCore<T1, T2, TPlugOptions> t) where TPlugOptions : struct, IPlugOptions
         {
             if (t.isSpeedBased) t.duration = t.tweenPlugin.GetSpeedBasedDuration(t.plugOptions, t.duration, t.changeValue);
             t.fullDuration = t.loops > -1 ? t.duration * t.loops : Mathf.Infinity;
