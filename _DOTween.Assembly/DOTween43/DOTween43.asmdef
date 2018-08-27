@@ -1,0 +1,10 @@
+{
+    "name": "DOTween43",
+    "references": [
+        "DOTween"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true
+}
