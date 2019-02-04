@@ -1,0 +1,15 @@
+{
+    "name": "DOTweenEditor",
+    "references": [
+        "DOTween",
+        "DOTween43",
+        "DOTween46",
+        "DOTween50"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true
+}
