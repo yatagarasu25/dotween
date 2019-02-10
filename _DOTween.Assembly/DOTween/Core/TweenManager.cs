@@ -17,6 +17,7 @@ namespace DG.Tweening.Core
         const int _DefaultMaxTweeners = 200;
         const int _DefaultMaxSequences = 50;
         const string _MaxTweensReached = "Max Tweens reached: capacity has automatically been increased from #0 to #1. Use DOTween.SetTweensCapacity to set it manually at startup";
+        const float _EpsilonVsTimeCheck = 0.000001f;
 
         internal static bool isUnityEditor;
         public static bool isDebugBuild;
@@ -383,7 +384,8 @@ namespace DG.Tweening.Core
                 if (!t.isPlaying) continue;
                 t.creationLocked = true; // Lock tween creation methods from now on
                 float tDeltaTime = (t.isIndependentUpdate ? independentTime : deltaTime) * t.timeScale;
-                if (tDeltaTime <= 0) continue; // Skip update in case time is 0
+//                if (tDeltaTime <= 0) continue; // Skip update in case time is 0 (commented in favor of next line because this prevents negative timeScales)
+                if (tDeltaTime < _EpsilonVsTimeCheck && tDeltaTime > -_EpsilonVsTimeCheck) continue; // Skip update in case time is approximately 0
                 if (!t.delayComplete) {
                     tDeltaTime = t.UpdateDelay(t.elapsedDelay + tDeltaTime);
                     if (tDeltaTime <= -1) {
@@ -511,6 +513,13 @@ namespace DG.Tweening.Core
                     isFilterCompliant = true;
                     for (int c = 0; c < optionalArrayLen; ++c) {
                         object objId = optionalArray[c];
+                        if (objId is string) {
+                            useStringId = true;
+                            stringId = (string)objId;
+                        } else if (objId is int) {
+                            useIntId = true;
+                            intId = (int)objId;
+                        }
                         if (useStringId && t.stringId == stringId) {
                             isFilterCompliant = false;
                             break;
@@ -868,6 +877,16 @@ namespace DG.Tweening.Core
         {
             if (_requiresActiveReorganization) ReorganizeActiveTweens();
 
+            // Safety check (IndexOutOfRangeException)
+            if (totActiveTweens < 0) {
+                Debugger.LogAddActiveTweenError("totActiveTweens < 0");
+                totActiveTweens = 0;
+            }
+//            else if (totActiveTweens > _activeTweens.Length - 1) {
+//                Debugger.LogError("AddActiveTween: totActiveTweens > _activeTweens capacity. This should never ever happen. Please report it with instructions on how to reproduce it");
+//                return;
+//            }
+
             t.active = true;
             t.updateType = DOTween.defaultUpdateType;
             t.isIndependentUpdate = DOTween.defaultTimeScaleIndependent;
@@ -948,36 +967,40 @@ namespace DG.Tweening.Core
             _activeTweens[index] = null;
 
             if (t.updateType == UpdateType.Normal) {
+                // Safety check (IndexOutOfRangeException)
                 if (totActiveDefaultTweens > 0) {
                     totActiveDefaultTweens--;
                     hasActiveDefaultTweens = totActiveDefaultTweens > 0;
                 } else {
-                    Debugger.LogRemoveActiveTweenError("totActiveDefaultTweens");
+                    Debugger.LogRemoveActiveTweenError("totActiveDefaultTweens < 0");
                 }
             } else {
                 switch (t.updateType) {
                 case UpdateType.Fixed:
+                    // Safety check (IndexOutOfRangeException)
                     if (totActiveFixedTweens > 0) {
                         totActiveFixedTweens--;
                         hasActiveFixedTweens = totActiveFixedTweens > 0;
                     } else {
-                        Debugger.LogRemoveActiveTweenError("totActiveFixedTweens");
+                        Debugger.LogRemoveActiveTweenError("totActiveFixedTweens < 0");
                     }
                     break;
                 case UpdateType.Late:
+                    // Safety check (IndexOutOfRangeException)
                     if (totActiveLateTweens > 0) {
                         totActiveLateTweens--;
                         hasActiveLateTweens = totActiveLateTweens > 0;
                     } else {
-                        Debugger.LogRemoveActiveTweenError("totActiveLateTweens");
+                        Debugger.LogRemoveActiveTweenError("totActiveLateTweens < 0");
                     }
                     break;
                 default:
+                    // Safety check (IndexOutOfRangeException)
                     if (totActiveManualTweens > 0) {
                         totActiveManualTweens--;
                         hasActiveManualTweens = totActiveManualTweens > 0;
                     } else {
-                        Debugger.LogRemoveActiveTweenError("totActiveManualTweens");
+                        Debugger.LogRemoveActiveTweenError("totActiveManualTweens < 0");
                     }
                     break;
                 }
@@ -986,17 +1009,20 @@ namespace DG.Tweening.Core
             hasActiveTweens = totActiveTweens > 0;
             if (t.tweenType == TweenType.Tweener) totActiveTweeners--;
             else totActiveSequences--;
+            // Safety check (IndexOutOfRangeException)
             if (totActiveTweens < 0) {
                 totActiveTweens = 0;
-                Debugger.LogRemoveActiveTweenError("totActiveTweens");
+                Debugger.LogRemoveActiveTweenError("totActiveTweens < 0");
             }
+            // Safety check (IndexOutOfRangeException)
             if (totActiveTweeners < 0) {
                 totActiveTweeners = 0;
-                Debugger.LogRemoveActiveTweenError("totActiveTweeners");
+                Debugger.LogRemoveActiveTweenError("totActiveTweeners < 0");
             }
+            // Safety check (IndexOutOfRangeException)
             if (totActiveSequences < 0) {
                 totActiveSequences = 0;
-                Debugger.LogRemoveActiveTweenError("totActiveSequences");
+                Debugger.LogRemoveActiveTweenError("totActiveSequences < 0");
             }
         }
 
