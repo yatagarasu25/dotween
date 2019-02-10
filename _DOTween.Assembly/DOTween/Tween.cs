@@ -102,9 +102,9 @@ namespace DG.Tweening
         /// <summary>Time position within a single loop cycle</summary>
         public float position { get; internal set; } // Required by Modules
         internal float fullDuration; // Total duration loops included
-        internal int completedLoops;
-        internal bool isPlaying; // Set by TweenManager when getting a new tween
-        internal bool isComplete;
+        public int completedLoops;
+		public bool isPlaying; // Set by TweenManager when getting a new tween
+		public bool isComplete;
         internal float elapsedDelay; // Amount of eventual delay elapsed (shared by Sequences only for compatibility reasons, otherwise not used)
         internal bool delayComplete = true; // TRUE when the delay has elapsed or isn't set, also set by Delay extension method (shared by Sequences only for compatibility reasons, otherwise not used)
         

@@ -12,27 +12,27 @@ using UnityEngine;
 
 namespace DG.Tweening.Core
 {
-    internal static class TweenManager
+    public static class TweenManager
     {
         const int _DefaultMaxTweeners = 200;
         const int _DefaultMaxSequences = 50;
         const string _MaxTweensReached = "Max Tweens reached: capacity has automatically been increased from #0 to #1. Use DOTween.SetTweensCapacity to set it manually at startup";
 
         internal static bool isUnityEditor;
-        internal static bool isDebugBuild;
+        public static bool isDebugBuild;
         internal static int maxActive = _DefaultMaxTweeners + _DefaultMaxSequences; // Always equal to maxTweeners + maxSequences
-        internal static int maxTweeners = _DefaultMaxTweeners; // Always >= maxSequences
-        internal static int maxSequences = _DefaultMaxSequences; // Always <= maxTweeners
+        public static int maxTweeners = _DefaultMaxTweeners; // Always >= maxSequences
+        public static int maxSequences = _DefaultMaxSequences; // Always <= maxTweeners
         internal static bool hasActiveTweens, hasActiveDefaultTweens, hasActiveLateTweens, hasActiveFixedTweens, hasActiveManualTweens;
-        internal static int totActiveTweens, totActiveDefaultTweens, totActiveLateTweens, totActiveFixedTweens, totActiveManualTweens;
-        internal static int totActiveTweeners, totActiveSequences;
-        internal static int totPooledTweeners, totPooledSequences;
+        public static int totActiveTweens, totActiveDefaultTweens, totActiveLateTweens, totActiveFixedTweens, totActiveManualTweens;
+        public static int totActiveTweeners, totActiveSequences;
+        public static int totPooledTweeners, totPooledSequences;
         internal static int totTweeners, totSequences; // Both active and pooled
         internal static bool isUpdateLoop; // TRUE while an update cycle is running (used to treat direct tween Kills differently)
 
         // Tweens contained in Sequences are not inside the active lists
         // Arrays are organized (max once per update) so that existing elements are next to each other from 0 to (totActiveTweens - 1)
-        internal static Tween[] _activeTweens = new Tween[_DefaultMaxTweeners + _DefaultMaxSequences]; // Internal just to allow DOTweenInspector to access it
+        public static Tween[] _activeTweens = new Tween[_DefaultMaxTweeners + _DefaultMaxSequences]; // Internal just to allow DOTweenInspector to access it
         static Tween[] _pooledTweeners = new Tween[_DefaultMaxTweeners];
         static readonly Stack<Tween> _PooledSequences = new Stack<Tween>();
 
@@ -784,12 +784,12 @@ namespace DG.Tweening.Core
 
         #region Info Getters
 
-        internal static int TotalPooledTweens()
+        public static int TotalPooledTweens()
         {
             return totPooledTweeners + totPooledSequences;
         }
 
-        internal static int TotalPlayingTweens()
+        public static int TotalPlayingTweens()
         {
             if (!hasActiveTweens) return 0;
 

@@ -106,7 +106,7 @@ namespace DG.Tweening
         /// <summary>Used internally. Assigned/removed by DOTweenComponent.Create/DestroyInstance</summary>
         public static DOTweenComponent instance;
 
-        internal static int maxActiveTweenersReached, maxActiveSequencesReached; // Controlled by DOTweenInspector if showUnityEditorReport is active
+        public static int maxActiveTweenersReached, maxActiveSequencesReached; // Controlled by DOTweenInspector if showUnityEditorReport is active
         internal static readonly List<TweenCallback> GizmosDelegates = new List<TweenCallback>(); // Can be used by other classes to call internal gizmo draw methods
         internal static bool initialized; // Can be set to false by DOTweenComponent OnDestroy
         internal static bool isQuitting; // Set by DOTweenComponent when the application is quitting

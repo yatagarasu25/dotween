@@ -9,7 +9,7 @@ namespace DG.Tweening.Core
 {
     public abstract class ABSSequentiable
     {
-        internal TweenType tweenType;
+        public TweenType tweenType;
         internal float sequencedPosition; // position in Sequence
         internal float sequencedEndPosition; // end position in Sequence
 
